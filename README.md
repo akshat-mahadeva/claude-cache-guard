@@ -41,15 +41,33 @@ Needs Python 3 and Claude Code. Hooks run in the terminal and the desktop app.
 `CACHE_GUARD_COMPACT_TOKENS` (default 150000) · `CACHE_GUARD_CLEAR_TOKENS` (300000) ·
 `CACHE_GUARD_TTL_SECONDS` (force the cache lifetime) · `CACHE_GUARD_QUIET=1` (print nothing)
 
-## Status line (terminal)
-Set `statusLine` to `python3 -I ~/.claude/cache-guard/scripts/cache_guard.py --status`.
-It prints `cache: warm 59m left | ctx 132K`. The desktop app did not show a custom status line in our test.
+## Status line (terminal): live countdown, limits, advice
+`scripts/statusline.py` prints two colored lines, using only fields Claude Code provides:
+
+```
+cache 🟢 41:12 left · hit 83% · re-cache if cold ~45K tok
+ctx ▓▓░░░░░░░░ 12% 122K · 5h 3% · wk 9% · $0.43 · → /compact now
+```
+Green while the cache is warm, yellow in the last 5 minutes, red when cold; the context bar and the
+`→ /compact` / `→ /clear` advice follow the same thresholds as the hook. `5h` / `wk` are your plan limits
+(shown only when Claude Code provides them, i.e. Pro/Max); `$` is Claude Code's own session cost estimate.
+A field that is missing is simply not shown.
+
+Add to `~/.claude/settings.json` (the `refreshInterval` makes the countdown tick while you are idle,
+which the hook cannot do):
+```json
+"statusLine": { "type": "command", "command": "python3 -I ~/.claude/cache-guard/scripts/statusline.py", "refreshInterval": 1 }
+```
+Optional: set `CACHE_GUARD_WRITE_PRICE_PER_MTOK` to your model's cache-write price per million tokens
+(from Anthropic's pricing page) to add an estimated dollar cost of re-caching; without it only the token count shows.
+`NO_COLOR=1` turns colors off. **Terminal only:** the desktop app did not show a custom status line in our test,
+so desktop users get the hook messages.
 
 ## Honest limits
 - It reminds you; savings happen only if you act. No savings figure is claimed.
 - Context size and expiry are **estimates** from the transcript, which can lag the current turn.
 - Cache lifetime (1 h or 5 min) is guessed from the transcript's usage data.
-- A hook only runs on events, so it cannot warn while you sit idle; it warns after a reply or on your next message.
+- A hook only runs on events, so it cannot warn while you sit idle; the status line's countdown covers that in the terminal.
 - The notice appears as small grey text labelled "Stop says:"; its text can't be styled, hence the emoji markers.
 - Checked on Claude Code desktop (macOS) for `Stop` messages. The cold-cache message
   (`UserPromptSubmit`) is tested on a transcript but not yet seen live in the desktop app.
