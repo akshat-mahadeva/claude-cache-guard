@@ -1,0 +1,5 @@
+{
+  "name": "cache-guard",
+  "version": "0.1.0",
+  "description": "Warns (never acts) when the Claude Code prompt cache is cold and when to /compact or /clear."
+}
