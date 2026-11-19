@@ -198,8 +198,10 @@ def main():
             st["expiry_shown"] = True  # a threshold notice replaces the expiry note; no green line right after it
         elif level < st.get("level", 0):
             st["level"] = level  # compacted or cleared: re-arm
-        if not msgs and not st.get("expiry_shown") and left is not None and left > 0:
-            msgs.append(f"🟢 Cache warm for about {fmt_dur(left)} (until {datetime.fromtimestamp(ts + ttl).strftime('%H:%M')}). "
+        # A reply just finished, so its API call just refreshed the cache. The transcript may not contain that
+        # reply yet (it lags), so count from now, not from the older timestamp it still shows.
+        if not msgs and not st.get("expiry_shown") and ttl is not None and ttl > 0:
+            msgs.append(f"🟢 Cache warm for about {fmt_dur(ttl)} (until {datetime.fromtimestamp(now + ttl).strftime('%H:%M')}). "
                         f"A break longer than that means the next message rebuilds it.")
             st["expiry_shown"] = True  # once per session, not after every reply
         save_state(session, st)

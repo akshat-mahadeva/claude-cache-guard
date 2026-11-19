@@ -60,9 +60,12 @@ class HookTests(Base):
         self.assertIn("Cache warm", self.hook("Stop", t))
         self.assertEqual(self.hook("Stop", t), "")
 
-    def test_no_warm_notice_when_expired(self):
-        t = self.transcript(assistant(4000))  # 1 h cache, written 66 min ago
-        self.assertEqual(self.hook("Stop", t), "")
+    def test_stop_counts_from_now_when_transcript_lags(self):
+        # the transcript still shows the previous reply (14 min ago); the reply that just finished refreshed the cache
+        t = self.transcript(assistant(840))
+        msg = self.hook("Stop", t)
+        self.assertIn("about 60m", msg)
+        self.assertNotIn("46m", msg)
 
     def test_cold_notice_on_prompt_after_idle(self):
         t = self.transcript(assistant(4000))
@@ -75,6 +78,10 @@ class HookTests(Base):
     def test_five_minute_cache_goes_cold_after_six_minutes(self):
         t = self.transcript(assistant(400, ttl_key="ephemeral_5m_input_tokens"))
         self.assertIn("probably COLD", self.hook("UserPromptSubmit", t))
+
+    def test_five_minute_cache_notice_says_5m(self):
+        t = self.transcript(assistant(10, ttl_key="ephemeral_5m_input_tokens"))
+        self.assertIn("about 5m", self.hook("Stop", t))
 
     def test_unknown_ttl_is_never_assumed(self):
         t = self.transcript(assistant(100000, ttl_key=None, cache_write=0))

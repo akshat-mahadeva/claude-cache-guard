@@ -8,7 +8,7 @@ prompt cache and context size. Two parts:
 
 | Marker | When | Message |
 |---|---|---|
-| 🟢 | first reply of a session (if no other notice) | cache warm, and about when it expires |
+| 🟢 | first reply of a session (if no other notice) | cache warm; counted from the reply that just finished |
 | 🟡 | context passes ~150K tokens | run `/compact` with instructions now (cheapest while the cache is warm) |
 | 🔴 | context passes ~300K tokens | switching tasks? `/clear`. Same task? `/compact` |
 | 🔴 | you message after the cache probably went cold | this message re-reads about N tokens without the cache discount (estimate) |
@@ -80,6 +80,9 @@ lifetime) · `CACHE_GUARD_WARN_SECONDS` (status line: yellow below this, default
 - It reminds you; savings happen only if you act. No savings figure is claimed.
 - Context size and expiry are **estimates** from the transcript, which can lag the current turn; the last message's
   timestamp is only a proxy for the cache's real expiry.
+- After a reply the hook assumes that reply just refreshed the cache (the transcript lags by one reply, so it can't be
+  used for that moment); the status line has the exact expiry from Claude Code. Context size in the hook's 🟡/🔴 notices
+  can also lag by one reply.
 - The cache lifetime (1 h or 5 min) is read from the transcript's usage data. If it can't be read, the hook treats it as
   **unknown** and skips time-based notices; it never assumes one hour.
 - A hook only runs on events, so it can't warn while you sit idle; the status line's countdown covers that in the terminal.
