@@ -16,6 +16,7 @@ Settings (environment variables, all optional):
   CACHE_GUARD_TTL_SECONDS     force the cache lifetime (default: read from the transcript's usage data)
   CACHE_GUARD_STATE_DIR       where the small per-session state files live
                               (default ~/.claude/claude-cache-guard-state, private to you)
+  CACHE_GUARD_WAIT_MS         on Stop, how long to wait for the transcript to contain the reply (default 1500)
   CACHE_GUARD_QUIET=1         print nothing
 
 Cache lifetime is read from the transcript (1 h or 5 min cache writes). If it cannot be read, the lifetime is
@@ -157,6 +158,12 @@ def main():
     event = data.get("hook_event_name", "")
     path = data.get("transcript_path")
     info = last_usage(path) if isinstance(path, str) and path else None
+    if not info and event == "Stop" and isinstance(path, str) and path:
+        # first reply of a new session: the transcript is written asynchronously and may not hold it yet
+        deadline = time.time() + env_int("CACHE_GUARD_WAIT_MS", 1500) / 1000
+        while not info and time.time() < deadline:
+            time.sleep(0.25)
+            info = last_usage(path)
     if not info:
         if "--status" in sys.argv:
             print("cache: n/a")

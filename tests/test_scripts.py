@@ -39,7 +39,8 @@ class Base(unittest.TestCase):
         return p
 
     def hook(self, event, transcript, session="s1", **env):
-        e = dict(os.environ, CACHE_GUARD_STATE_DIR=self.state, **env)
+        e = dict(os.environ, CACHE_GUARD_STATE_DIR=self.state, CACHE_GUARD_WAIT_MS="0")
+        e.update(env)
         r = subprocess.run([sys.executable, "-I", HOOK], input=json.dumps(
             {"hook_event_name": event, "session_id": session, "transcript_path": transcript}),
             capture_output=True, text=True, env=e)
@@ -78,6 +79,19 @@ class HookTests(Base):
     def test_five_minute_cache_goes_cold_after_six_minutes(self):
         t = self.transcript(assistant(400, ttl_key="ephemeral_5m_input_tokens"))
         self.assertIn("probably COLD", self.hook("UserPromptSubmit", t))
+
+    def test_first_reply_waits_for_transcript_to_catch_up(self):
+        t = self.transcript("")  # no assistant message yet
+        e = dict(os.environ, CACHE_GUARD_STATE_DIR=self.state, CACHE_GUARD_WAIT_MS="3000")
+        p = subprocess.Popen([sys.executable, "-I", HOOK], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=e)
+        p.stdin.write(json.dumps({"hook_event_name": "Stop", "session_id": "new", "transcript_path": t}))
+        p.stdin.close()
+        time.sleep(0.6)
+        with open(t, "a") as f:
+            f.write(assistant(1) + "\n")  # the reply lands in the transcript after the hook started
+        out = p.stdout.read()
+        p.wait()
+        self.assertIn("Cache warm", out)
 
     def test_five_minute_cache_notice_says_5m(self):
         t = self.transcript(assistant(10, ttl_key="ephemeral_5m_input_tokens"))

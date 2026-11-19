@@ -74,6 +74,7 @@ pricing page) adds an estimated dollar cost of re-caching; without it only the t
 ## Settings (environment variables, optional)
 `CACHE_GUARD_COMPACT_TOKENS` (150000) · `CACHE_GUARD_CLEAR_TOKENS` (300000) · `CACHE_GUARD_TTL_SECONDS` (force the cache
 lifetime) · `CACHE_GUARD_WARN_SECONDS` (status line: yellow below this, default 300) · `CACHE_GUARD_STATE_DIR` ·
+`CACHE_GUARD_WAIT_MS` (how long the hook waits for the first reply to reach the transcript, default 1500) ·
 `CACHE_GUARD_QUIET=1` (print nothing). The hook's token thresholds are absolute, so lower them for small context windows.
 
 ## Honest limits
