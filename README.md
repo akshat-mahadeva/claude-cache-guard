@@ -32,7 +32,7 @@ Needs Python 3 and Claude Code. Hooks run in the terminal and the desktop app.
    }
    ```
 3. Start a new **desktop** session and send a message. After the reply you should see a collapsed
-   "Claude Code notice" with the 🟢 line (the terminal does not display it; see the status line below). To remove: restore the backup.
+   "Claude Code notice" with the 🟢 line (it also showed in the terminal in our test). To remove: restore the backup.
 
 **Plugin install (untested):** the repo includes `.claude-plugin/plugin.json` and `hooks/hooks.json`
 (uses `${CLAUDE_PLUGIN_ROOT}`) so it should install as a plugin, but this path has not been tested.
@@ -69,9 +69,10 @@ so desktop users get the hook messages.
 - Cache lifetime (1 h or 5 min) is guessed from the transcript's usage data.
 - A hook only runs on events, so it cannot warn while you sit idle; the status line's countdown covers that in the terminal.
 - The notice appears as small grey text labelled "Stop says:"; its text can't be styled, hence the emoji markers.
-- **Where each part shows (tested on macOS, Claude Code v2.1.328):** the **status line shows in the terminal only**.
-  The **hook's notice shows in the desktop app only**: in the terminal the hook runs but its message is not displayed,
-  even in the `ctrl+o` verbose transcript. So use both: status line for the terminal, hook for desktop.
+- **Where each part shows (macOS, Claude Code v2.1.328):** the status line shows in the **terminal only** (the desktop app
+  has no custom status line). The hook notice (a grey "Stop says: cache-guard ..." line under the reply) showed in the
+  **desktop app** and, in a second terminal test, in the **terminal** too. In one earlier terminal run the hook executed but
+  no notice appeared; the cause is unknown, so treat the terminal notice as likely but not guaranteed.
 - Checked on Claude Code desktop (macOS) for `Stop` messages. The cold-cache message
   (`UserPromptSubmit`) is tested on a transcript but not yet seen live in the desktop app.
 
