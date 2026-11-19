@@ -1,85 +1,100 @@
 # claude-cache-guard
 
-A tiny Claude Code hook that **warns you** (it never acts) when:
+A small Claude Code add-on (Python 3, standard library only) that **warns you, and never acts**, about the
+prompt cache and context size. Two parts:
+
+- **Hook** (`scripts/cache_guard.py`): a short notice after a reply or before your next message.
+- **Status line** (`scripts/statusline.py`, terminal): a live cache countdown, context bar, plan limits and advice.
 
 | Marker | When | Message |
 |---|---|---|
-| 🟢 | first reply of a session | cache warm, and when it expires |
+| 🟢 | first reply of a session (if no other notice) | cache warm, and about when it expires |
 | 🟡 | context passes ~150K tokens | run `/compact` with instructions now (cheapest while the cache is warm) |
 | 🔴 | context passes ~300K tokens | switching tasks? `/clear`. Same task? `/compact` |
-| 🔴 | you message after the cache went cold | this message re-reads the whole context at full price |
+| 🔴 | you message after the cache probably went cold | this message re-reads about N tokens without the cache discount (estimate) |
 
-**Why:** the desktop app's Context panel shows how *big* the conversation is, but not whether the
-prompt cache is warm or cold. Re-reading a big context after the cache expired costs the most.
-cache-guard fills that gap. Warnings go to you only (`systemMessage`), never into Claude's context,
-so the hook itself costs no tokens. It is local: it reads your session transcript, no network.
+**Why:** the desktop app's Context panel shows how *big* the conversation is, not whether the prompt cache is
+still warm. When it has expired, the next message has to rebuild it
+([how caching and its lifetime work](https://code.claude.com/docs/en/prompt-caching)).
+
+**Privacy and safety:** local only, no network. It reads your session transcript and writes small flag files to
+`~/.claude/claude-cache-guard-state/` (private folder, old files removed after 7 days). It emits only a
+`systemMessage`, which the [hooks docs](https://code.claude.com/docs/en/hooks) describe as a warning shown to the user;
+it does not use `additionalContext`, the field that adds text to Claude's context.
 
 ## Install (tested path: manual)
-Needs Python 3 and Claude Code. Hooks run in the terminal and the desktop app.
+Needs Python 3 and Claude Code.
 
-1. Put the script somewhere permanent, e.g.:
+1. Put the scripts somewhere permanent:
    ```bash
    git clone https://github.com/akshat-mahadeva/claude-cache-guard ~/.claude/claude-cache-guard
    ```
-2. Back up, then add this to `~/.claude/settings.json` (merge into an existing `"hooks"` key if you have one):
-   ```bash
-   cp ~/.claude/settings.json ~/.claude/settings.json.bak
-   ```
+2. Add the entries below to `~/.claude/settings.json`. Keep your other keys; if you already have a `"hooks"` key,
+   add the two events inside it. Before:
    ```json
-   "hooks": {
-     "Stop": [{ "hooks": [{ "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/cache_guard.py", "timeout": 5 }] }],
-     "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/cache_guard.py", "timeout": 5 }] }]
+   { "theme": "dark" }
+   ```
+   After:
+   ```json
+   {
+     "theme": "dark",
+     "hooks": {
+       "Stop": [{ "hooks": [{ "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/cache_guard.py", "timeout": 5 }] }],
+       "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/cache_guard.py", "timeout": 5 }] }]
+     },
+     "statusLine": { "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/statusline.py", "refreshInterval": 1 }
    }
    ```
-3. Start a new **desktop** session and send a message. After the reply you should see a collapsed
-   "Claude Code notice" with the 🟢 line (it also showed in the terminal in our test). To remove: restore the backup.
+   (`statusLine` is optional and terminal-only; see below. `refreshInterval` makes the countdown tick while you are idle,
+   as documented in the [status line docs](https://code.claude.com/docs/en/statusline).)
+3. Start a **new** session and send a message. Hooks and the status line load at session start.
+
+**Remove:** delete the `"hooks"` entries and the `"statusLine"` key you added from `settings.json` (don't restore an old
+backup over it: that would also undo any other settings you changed since). Then delete `~/.claude/claude-cache-guard`.
 
 **Plugin install (untested):** the repo includes `.claude-plugin/plugin.json` and `hooks/hooks.json`
-(uses `${CLAUDE_PLUGIN_ROOT}`) so it should install as a plugin, but this path has not been tested.
+(uses `${CLAUDE_PLUGIN_ROOT}`), so it should install as a plugin, but this path has not been tested.
 
-## Settings (environment variables, optional)
-`CACHE_GUARD_COMPACT_TOKENS` (default 150000) · `CACHE_GUARD_CLEAR_TOKENS` (300000) ·
-`CACHE_GUARD_TTL_SECONDS` (force the cache lifetime) · `CACHE_GUARD_QUIET=1` (print nothing)
-
-## Status line (terminal): live countdown, limits, advice
-`scripts/statusline.py` prints two colored lines, using only fields Claude Code provides:
-
+## Status line (terminal)
 ```
 cache 🟢 41:12 left · hit 83% · re-cache if cold ~45K tok
 ctx ▓▓░░░░░░░░ 12% 122K · 5h 3% · wk 9% · $0.43 · → /compact now
 ```
-Green while the cache is warm, yellow in the last 5 minutes, red when cold; the context bar and the
-`→ /compact` / `→ /clear` advice follow the same thresholds as the hook. `5h` / `wk` are your plan limits
-(shown only when Claude Code provides them, i.e. Pro/Max); `$` is Claude Code's own session cost estimate.
-A field that is missing is simply not shown.
+Green while warm, yellow in the last 5 minutes, red when cold. Everything comes from fields Claude Code provides
+(`prompt_cache`, `context_window`, `rate_limits`, `cost`; see the
+[status line docs](https://code.claude.com/docs/en/statusline)). A missing or malformed field is not shown; if Claude Code
+does not say whether the cache is warm, it shows `cache: ?` instead of guessing. `5h` / `wk` appear only where Claude Code
+provides them (the docs list Pro, Max and Ultra plans); `$` is Claude Code's own session cost estimate.
+The context advice thresholds are capped at 75% (compact) and 90% (clear) of the context window when Claude Code reports
+its size, so small windows warn earlier.
 
-Add to `~/.claude/settings.json` (the `refreshInterval` makes the countdown tick while you are idle,
-which the hook cannot do):
-```json
-"statusLine": { "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/statusline.py", "refreshInterval": 1 }
-```
-Optional: set `CACHE_GUARD_WRITE_PRICE_PER_MTOK` to your model's cache-write price per million tokens
-(from Anthropic's pricing page) to add an estimated dollar cost of re-caching; without it only the token count shows.
-`NO_COLOR=1` turns colors off. **Terminal only:** the desktop app did not show a custom status line in our test,
-so desktop users get the hook messages.
+Optional: `CACHE_GUARD_WRITE_PRICE_PER_MTOK` (your model's cache-write price per million tokens, from Anthropic's
+pricing page) adds an estimated dollar cost of re-caching; without it only the token count is shown. `NO_COLOR=1` turns colors off.
+
+## Settings (environment variables, optional)
+`CACHE_GUARD_COMPACT_TOKENS` (150000) · `CACHE_GUARD_CLEAR_TOKENS` (300000) · `CACHE_GUARD_TTL_SECONDS` (force the cache
+lifetime) · `CACHE_GUARD_WARN_SECONDS` (status line: yellow below this, default 300) · `CACHE_GUARD_STATE_DIR` ·
+`CACHE_GUARD_QUIET=1` (print nothing). The hook's token thresholds are absolute, so lower them for small context windows.
 
 ## Honest limits
 - It reminds you; savings happen only if you act. No savings figure is claimed.
-- Context size and expiry are **estimates** from the transcript, which can lag the current turn.
-- Cache lifetime (1 h or 5 min) is guessed from the transcript's usage data.
-- A hook only runs on events, so it cannot warn while you sit idle; the status line's countdown covers that in the terminal.
-- The notice appears as small grey text labelled "Stop says:"; its text can't be styled, hence the emoji markers.
+- Context size and expiry are **estimates** from the transcript, which can lag the current turn; the last message's
+  timestamp is only a proxy for the cache's real expiry.
+- The cache lifetime (1 h or 5 min) is read from the transcript's usage data. If it can't be read, the hook treats it as
+  **unknown** and skips time-based notices; it never assumes one hour.
+- A hook only runs on events, so it can't warn while you sit idle; the status line's countdown covers that in the terminal.
 - **Where each part shows (macOS, Claude Code v2.1.328):** the status line shows in the **terminal only** (the desktop app
-  has no custom status line). The hook notice (a grey "Stop says: cache-guard ..." line under the reply) showed in the
-  **desktop app** and, in a second terminal test, in the **terminal** too. In one earlier terminal run the hook executed but
-  no notice appeared; the cause is unknown, so treat the terminal notice as likely but not guaranteed.
-- Checked on Claude Code desktop (macOS) for `Stop` messages. The cold-cache message
-  (`UserPromptSubmit`) is tested on a transcript but not yet seen live in the desktop app.
+  showed no custom status line). The hook notice (a grey "Stop says: cache-guard ..." line under the reply) showed in the
+  **desktop app** and, in a second terminal test, in the **terminal**. In one earlier terminal run the hook executed but no
+  notice appeared; cause unknown, so treat the terminal notice as likely, not guaranteed.
+- The cold-cache notice (`UserPromptSubmit`) is covered by tests but has not been seen live in the desktop app.
+- The notice is small grey text labelled "Stop says:"; its text can't be styled, hence the emoji markers.
 
-## Test without waiting
+## Tests
 ```bash
-echo '{"hook_event_name":"Stop","session_id":"t","transcript_path":"/path/to/session.jsonl"}' \
-  | CACHE_GUARD_COMPACT_TOKENS=1000 python3 -I scripts/cache_guard.py
+python3 -m unittest discover -s tests -v
 ```
+Covers expired and unknown cache lifetime, repeated and re-armed thresholds, malformed transcripts, large transcripts,
+unsafe session IDs and symlinked state files, and missing, null or malformed status line fields.
 
 MIT licensed.
