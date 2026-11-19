@@ -1,5 +1,5 @@
 {
-  "description": "cache-guard: warns (never acts) when the prompt cache is cold and when to /compact or /clear",
+  "description": "claude-cache-guard: warns (never acts) when the prompt cache is cold and when to /compact or /clear",
   "hooks": {
     "Stop": [{ "hooks": [{ "type": "command", "command": "python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/cache_guard.py", "timeout": 5 }] }],
     "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/cache_guard.py", "timeout": 5 }] }]

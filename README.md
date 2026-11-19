@@ -1,4 +1,4 @@
-# cache-guard
+# claude-cache-guard
 
 A tiny Claude Code hook that **warns you** (it never acts) when:
 
@@ -19,7 +19,7 @@ Needs Python 3 and Claude Code. Hooks run in the terminal and the desktop app.
 
 1. Put the script somewhere permanent, e.g.:
    ```bash
-   git clone <this-repo-url> ~/.claude/cache-guard
+   git clone https://github.com/akshat-mahadeva/claude-cache-guard ~/.claude/claude-cache-guard
    ```
 2. Back up, then add this to `~/.claude/settings.json` (merge into an existing `"hooks"` key if you have one):
    ```bash
@@ -27,8 +27,8 @@ Needs Python 3 and Claude Code. Hooks run in the terminal and the desktop app.
    ```
    ```json
    "hooks": {
-     "Stop": [{ "hooks": [{ "type": "command", "command": "python3 -I ~/.claude/cache-guard/scripts/cache_guard.py", "timeout": 5 }] }],
-     "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 -I ~/.claude/cache-guard/scripts/cache_guard.py", "timeout": 5 }] }]
+     "Stop": [{ "hooks": [{ "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/cache_guard.py", "timeout": 5 }] }],
+     "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/cache_guard.py", "timeout": 5 }] }]
    }
    ```
 3. Start a new session and send a message. After the reply you should see a collapsed
@@ -56,7 +56,7 @@ A field that is missing is simply not shown.
 Add to `~/.claude/settings.json` (the `refreshInterval` makes the countdown tick while you are idle,
 which the hook cannot do):
 ```json
-"statusLine": { "type": "command", "command": "python3 -I ~/.claude/cache-guard/scripts/statusline.py", "refreshInterval": 1 }
+"statusLine": { "type": "command", "command": "python3 -I ~/.claude/claude-cache-guard/scripts/statusline.py", "refreshInterval": 1 }
 ```
 Optional: set `CACHE_GUARD_WRITE_PRICE_PER_MTOK` to your model's cache-write price per million tokens
 (from Anthropic's pricing page) to add an estimated dollar cost of re-caching; without it only the token count shows.

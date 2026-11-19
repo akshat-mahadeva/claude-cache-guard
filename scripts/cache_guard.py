@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cache-guard: tell the user when the prompt cache is about to go cold and when to /compact or /clear.
+"""claude-cache-guard: tell the user when the prompt cache is about to go cold and when to /compact or /clear.
 
 Reads the hook JSON from stdin (needs `transcript_path`), looks at the last assistant message's
 token usage and timestamp, and prints a warning for the USER only ({"systemMessage": ...}).
